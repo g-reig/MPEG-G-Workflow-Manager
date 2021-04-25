@@ -24,15 +24,30 @@ public class GCSController {
         response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
         return response.getBody();
     }
-    @PostMapping("/create")
-    public String create(@AuthenticationPrincipal Jwt jwt, @RequestParam("dg_md") MultipartFile dg_md) {
+    @GetMapping("/getFiles")
+    public String getFiles(@AuthenticationPrincipal Jwt jwt) {
+        String url = "http://localhost:8082/api/getFiles";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity(headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = null;
+        response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        return response.getBody();
+    }
+    @PostMapping("/uploadMD")
+    public String create(@AuthenticationPrincipal Jwt jwt, @RequestParam("dg_md") MultipartFile dg_md, @RequestParam("dt_mt") MultipartFile[] dt_md) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dg_md", dg_md.getResource());
+        for (MultipartFile file : dt_md) {
+            body.add("dt_mt",file.getResource());
+        }
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-        String url = "http://localhost:8082/api/create";
+        String url = "http://localhost:8082/api/uploadMD";
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
         return "ok";
