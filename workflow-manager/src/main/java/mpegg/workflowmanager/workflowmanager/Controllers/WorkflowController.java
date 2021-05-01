@@ -50,20 +50,22 @@ public class WorkflowController {
         return "ok";
     }
 
-    @PostMapping("/upload")
-    public String create(@AuthenticationPrincipal Jwt jwt, @RequestParam("dg_md") MultipartFile dg_md, @RequestParam("dt_mt") MultipartFile[] dt_md) {
+    @PostMapping("/addDatasetGroup")
+    public String addMetadata(@AuthenticationPrincipal Jwt jwt, @RequestPart("dg_md") MultipartFile dg_md, @RequestPart("dg_pr") MultipartFile dg_pr, @RequestPart("dt_mt") MultipartFile[] dt_md, @RequestPart("file_id") String file_id) {
         HttpHeaders headers = new HttpHeaders();
         JSONObject a = (JSONObject) jwt.getClaims().get("realm_access");
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file_id",file_id);
         body.add("dg_md", dg_md.getResource());
+        body.add("dg_pr", dg_pr.getResource());
         for (MultipartFile file : dt_md) {
             body.add("dt_mt",file.getResource());
         }
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> response = restTemplate.exchange(urlGCS+"/api/v1/uploadMD", HttpMethod.POST, requestEntity, String.class);
+        ResponseEntity<String> response = restTemplate.exchange(urlGCS+"/api/v1/addDatasetGroup", HttpMethod.POST, requestEntity, String.class);
         return "ok";
     }
 }
