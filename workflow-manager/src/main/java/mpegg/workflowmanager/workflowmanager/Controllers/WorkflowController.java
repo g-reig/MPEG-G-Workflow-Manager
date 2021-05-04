@@ -67,6 +67,7 @@ public class WorkflowController {
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dg_id",dg_id);
+        body.add("dt_id", 20);
         if (dt_md != null) body.add("dt_md", dt_md.getResource());
         if (dt_pr != null) body.add("dt_pr", dt_pr.getResource());
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
@@ -90,6 +91,35 @@ public class WorkflowController {
         body.add("dg_id",dg_id);
         if (dg_md != null) body.add("dg_md", dg_md.getResource());
         if (dg_pr != null) body.add("dg_pr", dg_pr.getResource());
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/editDatasetGroup", HttpMethod.POST, requestEntity, String.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<String>(e.toString(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<String>("ok",HttpStatus.OK);
+    }
+
+    @PostMapping("/editDataset")
+    public ResponseEntity<String> editDataset(@AuthenticationPrincipal Jwt jwt, @RequestPart(value = "dt_md",required = false) MultipartFile dt_md, @RequestPart(value = "dt_pr",required = false) MultipartFile dt_pr, @RequestPart(value = "dt_id") String dt_id) {
+        if (dt_md == null && dt_pr == null) return new ResponseEntity<String>(HttpStatus.BAD_REQUEST);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("dt_id",dt_id);
+        if (dt_md != null) body.add("dt_md", dt_md.getResource());
+        if (dt_pr != null) body.add("dt_pr", dt_pr.getResource());
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/editDataset", HttpMethod.POST, requestEntity, String.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<String>(e.toString(),HttpStatus.INTERNAL_SERVER_ERROR);
+        }
         return new ResponseEntity<String>("ok",HttpStatus.OK);
     }
 }
