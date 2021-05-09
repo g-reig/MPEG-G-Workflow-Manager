@@ -1,5 +1,8 @@
 package mpegg.workflowmanager.workflowmanager.Utils;
 
+import mpegg.workflowmanager.workflowmanager.Models.Dataset;
+import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
+import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import net.minidev.json.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +22,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Optional;
 
 public class AuthorizationUtil {
     private final String authorizationURL = "http://localhost:8083/";
@@ -44,10 +48,30 @@ public class AuthorizationUtil {
         "</Attribute>\n"+
     "</Attributes>\n"+
 "</Request>";
-    public boolean authorized(String baseURL, String resource, String id, Jwt jwt, String action) {
+    private JWTUtil jwtUtil = new JWTUtil();
+
+    public boolean authorized(String baseURL, String resource, String id, Jwt jwt, String action, DatasetGroupRepository datasetGroupRepository, DatasetRepository datasetRepository) {
+        if (resource.equals("dt")) {
+            Long dtIdL = Long.parseLong(id);
+            Optional<Dataset> dtOpt = datasetRepository.findById(dtIdL);
+            if (dtOpt.isEmpty()) return false;
+            Dataset dt = dtOpt.get();
+            if (dt.getOwner().equals(jwtUtil.getUID(jwt))) return true;
+            if (!dt.getProtection()) {
+                resource = "dg";
+                id = String.valueOf(dt.getDatasetGroup().getId());
+            }
+        }
+        else if (resource.equals("dg")) {
+            Long dgIdL = Long.parseLong(id);
+            Optional<DatasetGroup> dgOpt = datasetGroupRepository.findById(dgIdL);
+            if (dgOpt.isEmpty()) return false;
+            DatasetGroup dg = dgOpt.get();
+            if (dg.getOwner().equals(jwtUtil.getUID(jwt))) return true;
+        }
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
-        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity(headers);
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(headers);
         RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<JSONObject> response = null;
         response = restTemplate.exchange(baseURL+"/api/v1/"+resource+"/"+id+"/protection", HttpMethod.GET, entity, JSONObject.class);
@@ -65,11 +89,11 @@ public class AuthorizationUtil {
         body.add("request", getRequest(jwt,action));
         body.add("rule", rules);
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-        response = restTemplate.exchange(authorizationURL+"/authorize_rule", HttpMethod.POST, requestEntity, String.class);
         Boolean authorized = null;
         try {
+            response = restTemplate.exchange(authorizationURL+"/authorize_rule", HttpMethod.POST, requestEntity, String.class);
             authorized = parseResponse(response.getBody());
-        } catch (ParserConfigurationException | IOException | SAXException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return false;
         }

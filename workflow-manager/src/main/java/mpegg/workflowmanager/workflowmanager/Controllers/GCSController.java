@@ -1,7 +1,10 @@
 package mpegg.workflowmanager.workflowmanager.Controllers;
 
+import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
+import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import mpegg.workflowmanager.workflowmanager.Utils.AuthorizationUtil;
 import net.minidev.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,9 +15,20 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Optional;
+
 @RestController
 @RequestMapping("/api/v1")
-public class WorkflowController {
+public class GCSController {
+
+    @Autowired
+    private MPEGFileRepository mpegFileRepository;
+
+    @Autowired
+    private DatasetGroupRepository datasetGroupRepository;
+
+    @Autowired
+    private DatasetRepository datasetRepository;
 
     private final String urlGCS = "http://localhost:8082";
     private final AuthorizationUtil authorizationUtil = new AuthorizationUtil();
@@ -69,7 +83,6 @@ public class WorkflowController {
         headers.add("Authorization", "Bearer " + jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dg_id", dg_id);
-        body.add("dt_id", 20);
         if (dt_md != null) body.add("dt_md", dt_md.getResource());
         if (dt_pr != null) body.add("dt_pr", dt_pr.getResource());
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
@@ -91,8 +104,16 @@ public class WorkflowController {
         headers.add("Authorization", "Bearer " + jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dg_id", dg_id);
-        if (dg_md != null) body.add("dg_md", dg_md.getResource());
-        if (dg_pr != null) body.add("dg_pr", dg_pr.getResource());
+        boolean authorized = true;
+        if (dg_md != null) {
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditMetadataDatasetGroup", datasetGroupRepository, datasetRepository);
+            body.add("dg_md", dg_md.getResource());
+        }
+        if (dg_pr != null) {
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditProtectionDatasetGroup", datasetGroupRepository, datasetRepository);
+            body.add("dg_pr", dg_pr.getResource());
+        }
+        if (!authorized) return new ResponseEntity<String>("Not authorized",HttpStatus.FORBIDDEN);
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
         try {
@@ -112,8 +133,16 @@ public class WorkflowController {
         headers.add("Authorization", "Bearer " + jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dt_id", dt_id);
-        if (dt_md != null) body.add("dt_md", dt_md.getResource());
-        if (dt_pr != null) body.add("dt_pr", dt_pr.getResource());
+        boolean authorized = true;
+        if (dt_md != null) {
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditMetadataDataset", datasetGroupRepository, datasetRepository);
+            body.add("dt_md", dt_md.getResource());
+        }
+        if (dt_pr != null) {
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditProtectionDataset", datasetGroupRepository, datasetRepository);
+            body.add("dt_pr", dt_pr.getResource());
+        }
+        if (!authorized) return new ResponseEntity<String>("Not authorized",HttpStatus.FORBIDDEN);
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
         try {
@@ -127,6 +156,8 @@ public class WorkflowController {
 
     @GetMapping("/dg/{dg_id}/{resource}")
     public ResponseEntity<JSONObject> getDatasetGroup(@AuthenticationPrincipal Jwt jwt, @PathVariable("dg_id") String dg_id, @PathVariable("resource") String resource) {
+        Long dg_idL = Long.parseLong(dg_id);
+        Optional<DatasetGroup> dg = datasetGroupRepository.findById(dg_idL);
         String action = null;
         switch (resource) {
             case "metadata":
@@ -141,7 +172,7 @@ public class WorkflowController {
                 return new ResponseEntity<JSONObject>(HttpStatus.BAD_REQUEST);
         }
         if (action != null) {
-            boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, action);
+            boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, action, datasetGroupRepository, datasetRepository);
             if (!authorized) return new ResponseEntity<JSONObject>(HttpStatus.FORBIDDEN);
         }
         HttpHeaders headers = new HttpHeaders();
