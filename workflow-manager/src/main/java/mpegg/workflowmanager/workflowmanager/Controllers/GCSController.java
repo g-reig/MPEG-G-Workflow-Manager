@@ -1,6 +1,5 @@
 package mpegg.workflowmanager.workflowmanager.Controllers;
 
-import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
 import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import mpegg.workflowmanager.workflowmanager.Utils.AuthorizationUtil;
 import net.minidev.json.JSONObject;
@@ -14,8 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -106,11 +103,11 @@ public class GCSController {
         body.add("dg_id", dg_id);
         boolean authorized = true;
         if (dg_md != null) {
-            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditMetadataDatasetGroup", datasetGroupRepository, datasetRepository);
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditMetadataDatasetGroup", datasetGroupRepository, datasetRepository, mpegFileRepository);
             body.add("dg_md", dg_md.getResource());
         }
         if (dg_pr != null) {
-            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditProtectionDatasetGroup", datasetGroupRepository, datasetRepository);
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "EditProtectionDatasetGroup", datasetGroupRepository, datasetRepository, mpegFileRepository);
             body.add("dg_pr", dg_pr.getResource());
         }
         if (!authorized) return new ResponseEntity<String>("Not authorized",HttpStatus.FORBIDDEN);
@@ -135,11 +132,11 @@ public class GCSController {
         body.add("dt_id", dt_id);
         boolean authorized = true;
         if (dt_md != null) {
-            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditMetadataDataset", datasetGroupRepository, datasetRepository);
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditMetadataDataset", datasetGroupRepository, datasetRepository, mpegFileRepository);
             body.add("dt_md", dt_md.getResource());
         }
         if (dt_pr != null) {
-            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditProtectionDataset", datasetGroupRepository, datasetRepository);
+            authorized = authorized && authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "EditProtectionDataset", datasetGroupRepository, datasetRepository, mpegFileRepository);
             body.add("dt_pr", dt_pr.getResource());
         }
         if (!authorized) return new ResponseEntity<String>("Not authorized",HttpStatus.FORBIDDEN);
@@ -154,10 +151,85 @@ public class GCSController {
         return new ResponseEntity<String>("ok", HttpStatus.OK);
     }
 
+    @DeleteMapping("/deleteFile")
+    public ResponseEntity<String> deleteFile(@AuthenticationPrincipal Jwt jwt, @RequestParam("file_id") String file_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "file", file_id, jwt, null, datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.add("Authorization", "Bearer " + jwt.getTokenValue());
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file_id", file_id);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/deleteFile", HttpMethod.DELETE, requestEntity, String.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<String>(e.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<String>("ok", HttpStatus.OK);
+
+    }
+
+    @DeleteMapping("/deleteDatasetGroup")
+    public ResponseEntity<String> deleteDatasetGroup(@AuthenticationPrincipal Jwt jwt, @RequestParam("dg_id") String dg_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "deleteDatasetGroup", datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.add("Authorization", "Bearer " + jwt.getTokenValue());
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("dg_id", dg_id);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/deleteDatasetGroup", HttpMethod.DELETE, requestEntity, String.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<String>(e.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<String>("ok", HttpStatus.OK);
+    }
+
+    @DeleteMapping("/deleteDataset")
+    public ResponseEntity<String> deleteDataset(@AuthenticationPrincipal Jwt jwt, @RequestParam("dt_id") String dt_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, "deleteDataset", datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.add("Authorization", "Bearer " + jwt.getTokenValue());
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("dt_id", dt_id);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/deleteDataset", HttpMethod.DELETE, requestEntity, String.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<String>(e.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<String>("ok", HttpStatus.OK);
+    }
+
+    @GetMapping("/mpegfile/{file_id}")
+    public ResponseEntity<JSONObject> getFile(@AuthenticationPrincipal Jwt jwt, @PathVariable("file_id") String file_id) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity(headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<JSONObject> response = null;
+        try {
+            response = restTemplate.exchange(urlGCS + "/api/v1/mpegfile/" + file_id, HttpMethod.GET, entity, JSONObject.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<JSONObject>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return response;
+    }
+
     @GetMapping("/dg/{dg_id}/{resource}")
     public ResponseEntity<JSONObject> getDatasetGroup(@AuthenticationPrincipal Jwt jwt, @PathVariable("dg_id") String dg_id, @PathVariable("resource") String resource) {
-        Long dg_idL = Long.parseLong(dg_id);
-        Optional<DatasetGroup> dg = datasetGroupRepository.findById(dg_idL);
         String action = null;
         switch (resource) {
             case "metadata":
@@ -172,7 +244,7 @@ public class GCSController {
                 return new ResponseEntity<JSONObject>(HttpStatus.BAD_REQUEST);
         }
         if (action != null) {
-            boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, action, datasetGroupRepository, datasetRepository);
+            boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, action, datasetGroupRepository, datasetRepository, mpegFileRepository);
             if (!authorized) return new ResponseEntity<JSONObject>(HttpStatus.FORBIDDEN);
         }
         HttpHeaders headers = new HttpHeaders();
@@ -182,6 +254,36 @@ public class GCSController {
         ResponseEntity<JSONObject> response = null;
         try {
             response = restTemplate.exchange(urlGCS + "/api/v1/dg/" + dg_id + "/" + resource, HttpMethod.GET, entity, JSONObject.class);
+        } catch (RestClientException e) {
+            e.printStackTrace();
+            return new ResponseEntity<JSONObject>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return response;
+    }
+
+    @GetMapping("/dt/{dt_id}/{resource}")
+    public ResponseEntity<JSONObject> getDataset(@AuthenticationPrincipal Jwt jwt, @PathVariable("dt_id") String dt_id, @PathVariable("resource") String resource) {
+        String action = null;
+        switch (resource) {
+            case "metadata":
+                action = "GetMetadataDataset";
+                break;
+            case "protection":
+                action = "GetProtectionDataset";
+                break;
+            default:
+                return new ResponseEntity<JSONObject>(HttpStatus.BAD_REQUEST);
+        }
+        boolean authorized = authorizationUtil.authorized(urlGCS, "dt", dt_id, jwt, action, datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<JSONObject>(HttpStatus.FORBIDDEN);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
+        HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity(headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<JSONObject> response = null;
+        try {
+            response = restTemplate.exchange(urlGCS + "/api/v1/dt/" + dt_id + "/" + resource, HttpMethod.GET, entity, JSONObject.class);
         } catch (RestClientException e) {
             e.printStackTrace();
             return new ResponseEntity<JSONObject>(HttpStatus.INTERNAL_SERVER_ERROR);

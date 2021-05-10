@@ -2,6 +2,7 @@ package mpegg.workflowmanager.workflowmanager.Utils;
 
 import mpegg.workflowmanager.workflowmanager.Models.Dataset;
 import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
+import mpegg.workflowmanager.workflowmanager.Models.MPEGFile;
 import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import net.minidev.json.JSONObject;
 import org.springframework.http.HttpEntity;
@@ -50,7 +51,7 @@ public class AuthorizationUtil {
 "</Request>";
     private JWTUtil jwtUtil = new JWTUtil();
 
-    public boolean authorized(String baseURL, String resource, String id, Jwt jwt, String action, DatasetGroupRepository datasetGroupRepository, DatasetRepository datasetRepository) {
+    public boolean authorized(String baseURL, String resource, String id, Jwt jwt, String action, DatasetGroupRepository datasetGroupRepository, DatasetRepository datasetRepository, MPEGFileRepository mpegFileRepository) {
         if (resource.equals("dt")) {
             Long dtIdL = Long.parseLong(id);
             Optional<Dataset> dtOpt = datasetRepository.findById(dtIdL);
@@ -69,6 +70,16 @@ public class AuthorizationUtil {
             DatasetGroup dg = dgOpt.get();
             if (dg.getOwner().equals(jwtUtil.getUID(jwt))) return true;
         }
+
+        else if (resource.equals("file")) {
+            Long fileIdL = Long.parseLong(id);
+            Optional<MPEGFile> fileOpt = mpegFileRepository.findById(fileIdL);
+            if (fileOpt.isEmpty()) return false;
+            MPEGFile file = fileOpt.get();
+            return file.getOwner().equals(jwtUtil.getUID(jwt));
+        }
+
+        else return false;
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(headers);

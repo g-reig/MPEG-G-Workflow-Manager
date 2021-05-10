@@ -16,6 +16,7 @@ public class DatasetGroup {
 
     private String type;
 
+    @Column(columnDefinition="VARCHAR(2048)")
     private String description;
 
     private String center;
