@@ -1,5 +1,6 @@
 package mpegg.workflowmanager.workflowmanager.Controllers;
 
+import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
 import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import mpegg.workflowmanager.workflowmanager.Utils.AuthorizationUtil;
 import net.minidev.json.JSONObject;
@@ -13,6 +14,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -49,6 +52,8 @@ public class GCSController {
 
     @PostMapping("/addDatasetGroup")
     public ResponseEntity<String> addDatasetGroup(@AuthenticationPrincipal Jwt jwt, @RequestPart("dg_md") MultipartFile dg_md, @RequestPart("dg_pr") MultipartFile dg_pr, @RequestPart(value = "dt_md", required = false) MultipartFile[] dt_md, @RequestPart("file_id") String file_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "file", file_id, jwt, null, datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
         HttpHeaders headers = new HttpHeaders();
         JSONObject a = (JSONObject) jwt.getClaims().get("realm_access");
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -75,6 +80,8 @@ public class GCSController {
 
     @PostMapping("/addDataset")
     public ResponseEntity<String> addDataset(@AuthenticationPrincipal Jwt jwt, @RequestPart(value = "dt_md", required = false) MultipartFile dt_md, @RequestPart(value = "dt_pr", required = false) MultipartFile dt_pr, @RequestPart("dg_id") String dg_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "dg", dg_id, jwt, "AddDataset", datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<String>(HttpStatus.FORBIDDEN);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
         headers.add("Authorization", "Bearer " + jwt.getTokenValue());
@@ -214,6 +221,8 @@ public class GCSController {
 
     @GetMapping("/mpegfile/{file_id}")
     public ResponseEntity<JSONObject> getFile(@AuthenticationPrincipal Jwt jwt, @PathVariable("file_id") String file_id) {
+        boolean authorized = authorizationUtil.authorized(urlGCS, "file", file_id, jwt, null, datasetGroupRepository, datasetRepository, mpegFileRepository);
+        if (!authorized) return new ResponseEntity<JSONObject>(HttpStatus.FORBIDDEN);
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization" , "Bearer "+jwt.getTokenValue());
         HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity(headers);
@@ -239,6 +248,9 @@ public class GCSController {
                 action = "GetProtectionDatasetGroup";
                 break;
             case "datasets":
+                Long dgIdL = Long.parseLong(dg_id);
+                Optional<DatasetGroup> dgOpt = datasetGroupRepository.findById(dgIdL);
+                if (dgOpt.isEmpty()) return new ResponseEntity<JSONObject>(HttpStatus.FORBIDDEN);
                 break;
             default:
                 return new ResponseEntity<JSONObject>(HttpStatus.BAD_REQUEST);
