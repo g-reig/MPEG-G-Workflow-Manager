@@ -5,6 +5,7 @@ import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import mpegg.workflowmanager.workflowmanager.Utils.AuthorizationUtil;
 import net.minidev.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -30,7 +31,8 @@ public class GCSController {
     @Autowired
     private DatasetRepository datasetRepository;
 
-    private final String urlGCS = "http://localhost:8082";
+    @Value("${gcs.url}")
+    private final String urlGCS = null;
     private final AuthorizationUtil authorizationUtil = new AuthorizationUtil();
 
     @PostMapping("/addFile")
@@ -69,13 +71,14 @@ public class GCSController {
         }
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response = null;
         try {
-            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/addDatasetGroup", HttpMethod.POST, requestEntity, String.class);
+            response = restTemplate.exchange(urlGCS + "/api/v1/addDatasetGroup", HttpMethod.POST, requestEntity, String.class);
         } catch (RestClientException e) {
             e.printStackTrace();
             return new ResponseEntity<String>(e.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<String>("ok", HttpStatus.OK);
+        return new ResponseEntity<String>(response.getBody(), HttpStatus.OK);
     }
 
     @PostMapping("/addDataset")
@@ -87,17 +90,19 @@ public class GCSController {
         headers.add("Authorization", "Bearer " + jwt.getTokenValue());
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("dg_id", dg_id);
+        if (dt_md == null && dt_pr == null) return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         if (dt_md != null) body.add("dt_md", dt_md.getResource());
         if (dt_pr != null) body.add("dt_pr", dt_pr.getResource());
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
         RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> response;
         try {
-            ResponseEntity<String> response = restTemplate.exchange(urlGCS + "/api/v1/addDataset", HttpMethod.POST, requestEntity, String.class);
+            response = restTemplate.exchange(urlGCS + "/api/v1/addDataset", HttpMethod.POST, requestEntity, String.class);
         } catch (RestClientException e) {
             e.printStackTrace();
             return new ResponseEntity<String>(e.toString(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        return new ResponseEntity<String>("ok", HttpStatus.OK);
+        return new ResponseEntity<String>(response.getBody(), HttpStatus.OK);
     }
 
     @PostMapping("/editDatasetGroup")

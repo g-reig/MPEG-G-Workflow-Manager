@@ -5,6 +5,7 @@ import mpegg.workflowmanager.workflowmanager.Models.DatasetGroup;
 import mpegg.workflowmanager.workflowmanager.Models.MPEGFile;
 import mpegg.workflowmanager.workflowmanager.Repositories.*;
 import net.minidev.json.JSONObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -26,7 +27,8 @@ import java.util.ArrayList;
 import java.util.Optional;
 
 public class AuthorizationUtil {
-    private final String authorizationURL = "http://localhost:8083/";
+    //private final String authorizationURL = "http://authorization-service:8083";
+    private final String authorizationURL = "http://localhost:8083";
     private final String requestSample = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"+
             "<Request xmlns=\"urn:oasis:names:tc:xacml:3.0:core:schema:wd-17\"\n"+
             "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n"+
@@ -40,6 +42,7 @@ public class AuthorizationUtil {
     "<Attributes Category=\"urn:oasis:names:tc:xacml:3.0:attribute-category:action\">\n"+
         "<Attribute AttributeId=\"urn:oasis:names:tc:xacml:1.0:action:action-id\"\n"+
     "IncludeInResult=\"true\">\n"+
+
             "<AttributeValue DataType=\"http://www.w3.org/2001/XMLSchema#string\">%s</AttributeValue>\n"+
         "</Attribute>\n"+
     "</Attributes>\n"+
@@ -87,7 +90,7 @@ public class AuthorizationUtil {
         ResponseEntity<JSONObject> response = null;
         response = restTemplate.exchange(baseURL+"/api/v1/"+resource+"/"+id+"/protection", HttpMethod.GET, entity, JSONObject.class);
         Boolean authorized = null;
-        authorized = getAuthorization(action,jwt, String.valueOf(response.getBody().get("pr")));
+        authorized = getAuthorization(action,jwt, String.valueOf(response.getBody().get("data")));
         return authorized;
     }
 
@@ -105,7 +108,7 @@ public class AuthorizationUtil {
             response = restTemplate.exchange(authorizationURL+"/authorize_rule", HttpMethod.POST, requestEntity, String.class);
             authorized = parseResponse(response.getBody());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.out.println(authorizationURL);
             return false;
         }
         return authorized;

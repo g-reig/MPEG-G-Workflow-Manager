@@ -7,6 +7,7 @@ import mpegg.workflowmanager.workflowmanager.Utils.AuthorizationUtil;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,7 +32,8 @@ public class SearchController {
     @Autowired
     private DatasetRepository datasetRepository;
 
-    private final String urlSearch = "http://localhost:8087";
+    @Value("${search.url}")
+    private final String urlSearch = null;
 
     @PostMapping("/findDatasetGroupMetadata")
     private ResponseEntity<JSONArray> findDatasetGroupMetadata(@AuthenticationPrincipal Jwt jwt,

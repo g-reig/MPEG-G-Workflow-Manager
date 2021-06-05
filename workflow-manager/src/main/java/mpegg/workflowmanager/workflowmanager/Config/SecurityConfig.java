@@ -1,6 +1,7 @@
 package mpegg.workflowmanager.workflowmanager.Config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -14,7 +15,8 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 @EnableWebSecurity
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    String jwkSetUri = "http://localhost:8080/auth/realms/MPEG-G/protocol/openid-connect/certs";
+    @Value("${oauthserver.url}")
+    String jwkSetUri = null;
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http.authorizeRequests(authorizeRequests -> authorizeRequests
